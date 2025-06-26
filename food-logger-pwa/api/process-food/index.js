@@ -25,6 +25,7 @@ module.exports = async function (context, req) {
 
             try {
                 const response = await axios.post(url, payload, { headers: { 'Content-Type': 'application/json' } });
+                // Log and return the full Gemini API response for debugging
                 let jsonText = response.data.candidates[0].content.parts[0].text;
                 const match = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
                 if (match && match[1]) jsonText = match[1];
@@ -32,19 +33,19 @@ module.exports = async function (context, req) {
                 try {
                     return JSON.parse(jsonText);
                 } catch (parseErr) {
-                    // Return raw text and error for debugging
                     throw {
                         message: "Gemini API returned invalid JSON.",
                         raw: jsonText,
-                        parseError: parseErr.message
+                        parseError: parseErr.message,
+                        fullGeminiResponse: response.data
                     };
                 }
             } catch (error) {
-                // Return full error details for debugging
                 throw {
                     message: "Failed to call Gemini API or parse its response.",
                     axiosError: error.response ? error.response.data : error.message,
-                    stack: error.stack
+                    stack: error.stack,
+                    fullGeminiResponse: error.response ? error.response.data : undefined
                 };
             }
         };
