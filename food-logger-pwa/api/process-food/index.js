@@ -25,16 +25,19 @@ module.exports = async function (context, req) {
 
             try {
                 const response = await axios.post(url, payload);
-
-                // Gemini sometimes wraps JSON in ```json fences – strip them if present
                 let jsonText = response.data.candidates[0].content.parts[0].text;
                 const match = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
                 if (match && match[1]) jsonText = match[1];
 
-                return JSON.parse(jsonText);
+                try {
+                    return JSON.parse(jsonText);
+                } catch (parseErr) {
+                    context.log.error("Gemini API returned unparsable JSON:", jsonText);
+                    throw new Error("Gemini API returned invalid JSON. Please try again or check the prompt.");
+                }
             } catch (error) {
                 context.log.error("Error calling Gemini API:", error.response ? error.response.data : error.message);
-                throw new Error("Failed to parse food items with AI.");
+                throw new Error("Failed to call Gemini API or parse its response.");
             }
         };
 
