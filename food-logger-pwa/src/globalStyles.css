@@ -1,0 +1,37 @@
+:root {
+  /* Safari / iOS honour these system colors */
+  --app-accent: AccentColor;
+  --app-accent-contrast: AccentColorText;
+
+  /* Fallback if AccentColor unsupported */
+  --app-accent-fallback: #7d5fff;
+
+  /* Hairline separator (iOS 17 spec) */
+  --app-hairline: rgba(60, 60, 67, 0.36);
+}
+
+/* Universal font (SF + fallback) */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "SF Pro Rounded", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* hairline on pure-black backgrounds */
+    --app-hairline: rgba(84, 84, 88, 0.65);
+    /* optional darker fallback accent */
+    --app-accent-fallback: #5e5ce6; /* iOS indigo */
+  }
+}
+
+@keyframes drop-in {
+  0%   { opacity: 0; transform: translateY(20px); }
+  /* 30 ms of ease-in ≈ 17 % of 180 ms */
+  17%  { opacity: .6; transform: translateY(0);   animation-timing-function: cubic-bezier(.2,.8,.4,1); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.drop-in {
+  animation: drop-in 180ms forwards;
+}

@@ -1,3 +1,4 @@
+// Service worker logic removed as per user request.
 // This optional code is used to register a service worker.
 // register() is not called by default.
 
