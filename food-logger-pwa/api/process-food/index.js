@@ -39,26 +39,35 @@ module.exports = async function (context, req) {
         };
 
         // --- Function Logic ---
-        const { text, meal } = req.body; // 'meal' kept for API parity, currently unused
 
-        if (!text) {
-            context.res = { status: 400, body: "Please pass the 'text' in the request body" };
+        const { text, meal } = req.body;
+        if (!text || !meal) {
+            context.res = { status: 400, body: { error: 'Text and meal are required' } };
             return;
         }
 
+        context.log(`Processing with Gemini for ${meal}: "${text}"`);
+
+
+        // 1. Parse text with Gemini to get individual items and their nutritional info
         const parsedItems = await parseWithGemini(text);
 
-        const enrichedItems = parsedItems.map(foodItem => ({
-            id: `${Date.now()}-${Math.random()}`,   // unique id
-            name: foodItem.item,
-            quantity: foodItem.quantity,
-            calories: foodItem.Calorie  ?? 0,
-            protein:  foodItem.Protein  ?? 0,
-            carbs:    foodItem.Carbs    ?? 0,
-            fat:      foodItem.Fat      ?? 0,
-            fibre:    foodItem.Fibre    ?? 0,
-        }));
+        // 2. Map Gemini response to the desired output structure
+        const enrichedItems = parsedItems.map(foodItem => {
+            // Ensure all expected nutritional fields are present, provide defaults if necessary
+            return {
+                id: `${Date.now()}-${Math.random()}`,
+                name: foodItem.item,
+                quantity: foodItem.quantity,
+                calories: foodItem.Calorie !== undefined ? foodItem.Calorie : 0,
+                protein: foodItem.Protein !== undefined ? foodItem.Protein : 0,
+                carbs: foodItem.Carbs !== undefined ? foodItem.Carbs : 0,
+                fat: foodItem.Fat !== undefined ? foodItem.Fat : 0,
+                fibre: foodItem.Fibre !== undefined ? foodItem.Fibre : 0,
+            };
+        });
 
+        context.log('Processed Items:', enrichedItems);
         context.res = { body: enrichedItems };
 
     } catch (error) {
