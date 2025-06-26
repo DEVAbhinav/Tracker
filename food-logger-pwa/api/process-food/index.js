@@ -24,7 +24,7 @@ module.exports = async function (context, req) {
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
 
             try {
-                const response = await axios.post(url, payload);
+                const response = await axios.post(url, payload, { headers: { 'Content-Type': 'application/json' } });
                 let jsonText = response.data.candidates[0].content.parts[0].text;
                 const match = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
                 if (match && match[1]) jsonText = match[1];
@@ -32,12 +32,20 @@ module.exports = async function (context, req) {
                 try {
                     return JSON.parse(jsonText);
                 } catch (parseErr) {
-                    context.log.error("Gemini API returned unparsable JSON:", jsonText);
-                    throw new Error("Gemini API returned invalid JSON. Please try again or check the prompt.");
+                    // Return raw text and error for debugging
+                    throw {
+                        message: "Gemini API returned invalid JSON.",
+                        raw: jsonText,
+                        parseError: parseErr.message
+                    };
                 }
             } catch (error) {
-                context.log.error("Error calling Gemini API:", error.response ? error.response.data : error.message);
-                throw new Error("Failed to call Gemini API or parse its response.");
+                // Return full error details for debugging
+                throw {
+                    message: "Failed to call Gemini API or parse its response.",
+                    axiosError: error.response ? error.response.data : error.message,
+                    stack: error.stack
+                };
             }
         };
 
@@ -53,7 +61,20 @@ module.exports = async function (context, req) {
 
 
         // 1. Parse text with Gemini to get individual items and their nutritional info
-        const parsedItems = await parseWithGemini(text);
+        let parsedItems;
+        try {
+            parsedItems = await parseWithGemini(text);
+        } catch (err) {
+            // Return all error details to the browser
+            context.res = {
+                status: 500,
+                body: {
+                    error: "Gemini API error",
+                    details: err
+                }
+            };
+            return;
+        }
 
         // 2. Map Gemini response to the desired output structure
         const enrichedItems = parsedItems.map(foodItem => {
