@@ -5,8 +5,7 @@ import Container         from '@mui/material/Container';
 import Box               from '@mui/material/Box';
 import CircularProgress  from '@mui/material/CircularProgress';
 import Alert             from '@mui/material/Alert';
-
-import axios from 'axios';
+import axios             from 'axios';
 
 import FoodInputBar          from './FoodInputBar';
 import CapsuleTabs           from './CapsuleTabs';

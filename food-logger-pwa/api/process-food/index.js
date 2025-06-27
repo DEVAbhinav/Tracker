@@ -1,54 +1,18 @@
-const axios = require('axios');
+const { parseFoodWithAzureAI } = require('../../src/ai/azure');
 
 // This is the main function that Azure will run
 module.exports = async function (context, req) {
     // --- NEW: Top-level error catching to see any crash ---
     try {
-        // --- GEMINI API INTEGRATION ---
-        const parseWithGemini = async (text) => {
-            const apiKey = process.env.GEMINI_API_KEY; // must be set in Azure
-            if (!apiKey) {
-                throw new Error("CRITICAL: GEMINI_API_KEY environment variable is not set in Azure Configuration.");
-            }
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
-            // Updated prompt: ask Gemini to return full nutritional info
-            const prompt =
-                `Parse the following user input to identify food items and their quantities. ` +
-                `For each item, also provide its nutritional information: Calorie (kcal per item), ` +
-                `Carbs (grams per item), Fat (grams per item), Protein (grams per item), and Fibre (grams per item). ` +
-                `Return the result as a valid JSON array of objects, where each object has 'item', 'quantity', ` +
-                `'Calorie', 'Carbs', 'Fat', 'Protein', and 'Fibre' keys. User input: "${text}"`;
+        // --- AZURE OPENAI INTEGRATION (from shared ai/azure.js) ---
+        const apiKey = process.env.AZURE_OPENAI_API_KEY || "<your-api-key>";
+        const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2024-04-01-preview";
+        const endpoint = process.env.AZURE_OPENAI_ENDPOINT || "https://codemigration-resource.cognitiveservices.azure.com/";
+        const modelName = process.env.AZURE_OPENAI_MODEL || "o3-mini";
+        const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || "o3-mini";
 
-            const payload = { contents: [{ parts: [{ text: prompt }] }] };
-
-            try {
-                const response = await axios.post(url, payload, { headers: { 'Content-Type': 'application/json' } });
-                // Log and return the full Gemini API response for debugging
-                let jsonText = response.data.candidates[0].content.parts[0].text;
-                const match = jsonText.match(/```json\s*([\s\S]*?)\s*```/);
-                if (match && match[1]) jsonText = match[1];
-
-                try {
-                    return JSON.parse(jsonText);
-                } catch (parseErr) {
-                    throw {
-                        message: "Gemini API returned invalid JSON.",
-                        raw: jsonText,
-                        parseError: parseErr.message,
-                        fullGeminiResponse: response.data
-                    };
-                }
-            } catch (error) {
-                throw {
-                    message: "Failed to call Gemini API or parse its response.",
-                    axiosError: error.response ? error.response.data : error.message,
-                    stack: error.stack,
-                    fullGeminiResponse: error.response ? error.response.data : undefined
-                };
-            }
-        };
 
         // --- Function Logic ---
 
@@ -58,19 +22,19 @@ module.exports = async function (context, req) {
             return;
         }
 
-        context.log(`Processing with Gemini for ${meal}: "${text}"`);
+        context.log(`Processing with Azure OpenAI for ${meal}: "${text}"`);
 
 
-        // 1. Parse text with Gemini to get individual items and their nutritional info
+        // 1. Parse text with Azure OpenAI to get individual items and their nutritional info
         let parsedItems;
         try {
-            parsedItems = await parseWithGemini(text);
+            parsedItems = await parseFoodWithAzureAI(text, { endpoint, apiKey, deployment, apiVersion, modelName });
         } catch (err) {
             // Return all error details to the browser
             context.res = {
                 status: 500,
                 body: {
-                    error: "Gemini API error",
+                    error: "Azure OpenAI error",
                     details: err
                 }
             };
